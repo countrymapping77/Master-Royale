@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Mini Royale — Full (Deck + SanjarШ)</title>
+<style>
+  :root{
+    --ui-bg: rgba(0,0,0,0.85);
+    --accent: #00c853;
+    --accent-2: #00bfa5;
+    --blue: #007bff;
+    --danger: #ff5252;
+  }
+  html,body{height:100%;margin:0;background:#000;font-family:Inter,Arial,Helvetica,sans-serif;color:#fff;overflow:hidden}
+  #container{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+  canvas{
+    background:linear-gradient(#0f1113,#151718);
+    border-radius:12px;
+    box-shadow:0 24px 60px rgba(0,0,0,0.7);
+    border:3px solid rgba(255,255,255,0.03);
+  }
+
+  /* menu */
+  #menuWrap{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:linear-gradient(180deg,#000,#081018);z-index:220;transition:opacity .45s}
+  .menuCard{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:20px;border-radius:14px;text-align:center;width:780px;max-width:94%; box-shadow:0 10px 30px rgba(0,0,0,0.6); transform:translateY(0); transition:transform .25s}
+  .menuHeader{display:flex;align-items:center;gap:14px;justify-content:center}
+  .logo{width:52px;height:52px;border-radius:10px;background:linear-gradient(90deg,#00c853,#00bfa5);display:flex;align-items:center;justify-content:center;font-weight:900;color:#001;font-size:22px;box-shadow:0 6px 18px rgba(0,200,83,0.12)}
+  .titleMain{font-size:22px;font-weight:800}
+  .tabs{display:flex;gap:10px;justify-content:center;margin:14px 0}
+  .tabBtn{padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:#0c0d0f;cursor:pointer;color:#ddd;transition:.18s;box-shadow:0 6px 18px rgba(0,0,0,0.4)}
+  .tabBtn:hover{transform:translateY(-3px)}
+  .tabBtn.active{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#001;border-color:transparent; font-weight:800}
+  .deckGrid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:8px}
+  .cardPick{width:86px;height:86px;border-radius:12px;background:linear-gradient(180deg,#121214,#0b0b0c);display:flex;align-items:center;justify-content:center;font-size:30px;cursor:pointer;border:2px solid rgba(255,255,255,0.04);position:relative;transition:transform .12s,box-shadow .12s}
+  .cardPick:hover{transform:translateY(-6px); box-shadow:0 18px 30px rgba(0,0,0,0.6)}
+  .cardPick.selected{box-shadow:0 0 0 6px rgba(0,200,83,0.10);border-color:var(--accent)}
+  .cardPick .lbl{position:absolute;bottom:8px;font-size:12px;color:#ddd}
+  .playBtn{margin-top:12px;padding:10px 18px;border-radius:10px;border:none;background:var(--accent);color:#001;font-weight:800;cursor:pointer;box-shadow:0 10px 30px rgba(0,200,83,0.08)}
+  .menuRow{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:6px}
+
+  /* loading */
+  #loadingScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#000;z-index:210;color:#fff;font-size:20px;transition:opacity .3s}
+  #loadingDots{margin-top:8px; font-size:28px; letter-spacing:4px; opacity:0.9; color: #00c853;}
+
+  /* UI bottom */
+  #ui{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;display:flex;gap:12px;background:var(--ui-bg);padding:12px;border-radius:16px;z-index:40;align-items:center}
+  .unitBtn{position:relative;font-size:24px;padding:8px 14px;border-radius:10px;border:2px solid rgba(255,255,255,0.06);background:#0b0b0b;color:#fff;cursor:pointer;min-width:60px;transition:transform .12s}
+  .unitBtn:hover{transform:translateY(-4px)}
+  .unitBtn .cost{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:12px;color:#ffd66b;background:rgba(0,0,0,0.5);padding:2px 6px;border-radius:8px}
+  .unitBtn.active{background:var(--blue);border-color:#00aaff}
+  .unitBtn.disabled{opacity:0.28;pointer-events:none}
+  #elixir{position:fixed;left:12px;top:12px;background:rgba(255,255,255,0.04);padding:8px 12px;border-radius:10px;color:#7ef;z-index:40}
+  #abilityPanel{display:flex;gap:8px;align-items:center;margin-left:8px}
+  .abilityBtn{padding:6px 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#0b0b0b;color:#fff;cursor:pointer}
+  .abilityBtn.active{background:linear-gradient(90deg,#2ece8a,#2bb6a8); color:#001}
+  #sanjarShCooldown{font-size:12px;color:#ddd;margin-left:6px}
+
+  #msg{position:fixed;right:12px;top:12px;padding:8px 12px;border-radius:8px;background:rgba(0,0,0,0.5);color:#fff;z-index:50;display:none}
+
+  /* small helper */
+  .small{font-size:12px;color:#ccc}
+  .note{font-size:13px;color:#bdbdbd;margin-top:8px}
+
+  /* scoreboard / timer */
+  #hudTop{position:fixed;left:50%;transform:translateX(-50%);top:12px;display:flex;gap:14px;align-items:center;z-index:40; color:#ddd}
+  .timer{background:rgba(255,255,255,0.03);padding:6px 10px;border-radius:8px}
+  .towerStat{font-size:13px;color:#ddd}
+
+  /* selection highlight on units */
+  .selectedUnitOutline{stroke:rgba(40,255,120,0.9); stroke-width:3}
+
+  /* help panel */
+  #infoPanel{position:fixed;right:12px;bottom:12px;background:rgba(255,255,255,0.02);padding:10px;border-radius:10px;max-width:260px;color:#ddd;z-index:40}
+  #changesList{max-height:220px;overflow:auto;padding:6px; font-size:13px}
+</style>
+</head>
+<body>
+  <!-- LOADING -->
+  <div id="loadingScreen">
+    <div class="menuHeader">
+      <div class="logo">MR</div>
+      <div style="text-align:left">
+        <div style="font-size:22px;font-weight:800">Mini Royale</div>
+        <div class="small">Лёгкая мини-версия с колодами и механиками</div>
+      </div>
+    </div>
+    <div id="loadingDots">• • •</div>
+    <div class="small" style="margin-top:10px;opacity:0.85">Подготовка…</div>
+  </div>
+
+  <!-- MENU -->
+  <div id="menuWrap" aria-hidden="true">
+    <div class="menuCard">
+      <div class="menuHeader" style="margin-bottom:10px">
+        <div class="logo">MR</div>
+        <div>
+          <div class="titleMain">Mini Royale — Главное меню</div>
+          <div class="small">Выбери режим и настроь колоду</div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tabBtn active" data-tab="game">Играть</button>
+        <button class="tabBtn" data-tab="deck">Колода</button>
+        <button class="tabBtn" data-tab="guide">Справочник</button>
+        <button class="tabBtn" data-tab="changes">Список обновлений</button>
+      </div>
+
+      <div id="tabGame" class="tabContent">
+        <div style="display:flex;gap:12px;justify-content:center;align-items:center;flex-direction:column">
+          <div class="small">Нажми <strong>Играть</strong>, чтобы начать матч. В бою доступны только выбранные карты.</div>
+          <div class="menuRow">
+            <button id="playBtn" class="playBtn">Играть</button>
+            <button id="quickPlay" class="playBtn" style="background:#0066ff">Быстрая игра</button>
+            <button id="openGuide" class="playBtn" style="background:#ffd54f;color:#001">Открыть справочник</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tabDeck" class="tabContent" style="display:none">
+        <div class="small">Выбери до <strong>5</strong> карт для своей колоды. Остальные карты будут недоступны в бою.</div>
+        <div class="deckGrid" id="deckGrid"></div>
+        <div class="note">Выбрано: <span id="deckCount">0</span>/5</div>
+      </div>
+
+      <div id="tabGuide" class="tabContent" style="display:none; text-align:left; padding:8px 20px; max-height:300px; overflow:auto;">
+        <div class="small" style="margin-bottom:8px; font-weight:700">Справочник карт</div>
+        <div id="guideList"></div>
+      </div>
+
+      <div id="tabChanges" class="tabContent" style="display:none; text-align:left; padding:8px 20px; max-height:300px; overflow:auto;">
+        <div class="small" style="margin-bottom:8px; font-weight:700">Список обновлений</div>
+        <div id="changesList">
+          <div style="font-weight:700; margin-bottom:6px">Версия 1.0.0 — Выпуск</div>
+          <div class="small" style="margin-bottom:12px">Первоначальный релиз: базовые карты, колода, ИИ, UI.</div>
+
+          <div style="font-weight:700; margin-bottom:6px">Версия 1.1.0 — Новые механики</div>
+          <div class="small" style="margin-bottom:12px">Добавлен СанжарШ (способность увеличивать/уменьшать), улучшено меню, таймер матча.</div>
+
+          <div style="font-weight:700; margin-bottom:6px">Версия 1.2.0 — Баланс</div>
+          <div class="small">Бафы/фикс багов в поведении юнитов, Клим получил скорострельность, визуальные эффекты.</div>
+
+          <!-- more history can be appended -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="container">
+    <canvas id="gameCanvas" width="980" height="560"></canvas>
+  </div>
+
+  <div id="hudTop">
+    <div class="towerStat">Башня (Вы): <span id="playerHp">320</span></div>
+    <div class="timer">00:00</div>
+    <div class="towerStat">Башня (Враг): <span id="enemyHp">320</span></div>
+  </div>
+
+  <div id="elixir">Эликсир: 0 / 10</div>
+
+  <div id="ui" aria-hidden="false">
+    <!-- unit buttons created dynamically from deck on start -->
+    <div id="abilityPanel"></div>
+  </div>
+
+  <div id="msg"></div>
+
+  <div id="infoPanel">
+    <div style="font-weight:700;margin-bottom:6px">Подсказки</div>
+    <div class="small">Выбирай колоду в меню. Без колоды — играть нельзя.</div>
+    <div class="small" style="margin-top:6px">СанжарШ: нажми кнопку способности → клик по своему юниту → выбери Увеличить/Уменьшить.</div>
+  </div>
+
+  <button id="restartBtn" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); padding:12px 18px; border-radius:10px; border:none; background:var(--accent); color:#001; font-weight:700; z-index:50">🔁 Перезапуск</button>
+
+<script>
+/* ===========================
+   Mini Royale — Full Version
+   - Deck system
+   - Sanjar Ш ability
+   - Timer 2 minutes
+   - Klim fast shots
+   - Sanjar original flying splash (only tower)
+   - Prevent start without deck
+   =========================== */
+
+/* ---------- canvas + DOM ---------- */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let W = canvas.width, H = canvas.height;
+
+const loadingScreen = document.getElementById('loadingScreen');
+const loadingDots = document.getElementById('loadingDots');
+const menuWrap = document.getElementById('menuWrap');
+const tabBtns = document.querySelectorAll('.tabBtn');
+const tabGame = document.getElementById('tabGame');
+const tabDeck = document.getElementById('tabDeck');
+const tabGuide = document.getElementById('tabGuide');
+const tabChanges = document.getElementById('tabChanges');
+const playBtn = document.getElementById('playBtn');
+const quickPlay = document.getElementById('quickPlay');
+const openGuide = document.getElementById('openGuide');
+const deckGrid = document.getElementById('deckGrid');
+const deckCountEl = document.getElementById('deckCount');
+const guideList = document.getElementById('guideList');
+const ui = document.getElementById('ui');
+const abilityPanel = document.getElementById('abilityPanel');
+const elixirUI = document.getElementById('elixir');
+const restartBtn = document.getElementById('restartBtn');
+const msgBox = document.getElementById('msg');
+const hudTimer = document.querySelector('.timer');
+const playerHpEl = document.getElementById('playerHp');
+const enemyHpEl = document.getElementById('enemyHp');
+
+/* ---------- game state ---------- */
+let gameRunning = false;
+let selectedType = null, selectedCost = 0;
+let selectedDeck = []; // IDs chosen in menu
+let player = { tower: { x:44, y:H/2-64, w:52, h:128, hp:320, maxHp:320 }, elixir:0, maxElixir:10, deck: [] };
+let enemy  = { tower: { x:W-96, y:H/2-64, w:52, h:128, hp:320, maxHp:320 }, elixir:0, maxElixir:10, lastPlay:0, playInterval:1100, aggress:0.45 };
+let units = [], projectiles = [], effects = [], enemyDeck = [];
+let lastTime = performance.now();
+let cameraShake = {x:0,y:0,intensity:0};
+let matchStartTime = 0;
+let matchDuration = 120000; // 2 minutes in ms
+let sanjarShMode = false; // ability active
+let sanjarShCooldown = 0;
+let sanjarShCooldownMs = 5000;
+
+/* ---------- master cards ---------- */
+const ALL_CARDS = [
+  {id:'sword', emoji:'⚔️', name:'Мечник', cost:3, desc:'Сбалансированный боец'},
+  {id:'giant', emoji:'🔥', name:'Гигант', cost:6, desc:'Идёт прямо на башню'},
+  {id:'mage', emoji:'🪄', name:'Маг', cost:4, desc:'Дальний стрелок (поражает юнитов)'},
+  {id:'skeleton', emoji:'💀', name:'Скелет', cost:2, desc:'Быстрый мелкий'},
+  {id:'breaker', emoji:'🚧', name:'Стенобой', cost:4, desc:'Взрывается у башни и наносит урон'},
+  {id:'sanjar', emoji:'🛩️', name:'Санжар', cost:6, desc:'Летает и наносит сплеш (агрит только башню)'},
+  {id:'klim', emoji:'🏹', name:'Клим', cost:5, desc:'Строгий стрелок — стреляет по башне невероятно быстро'},
+  {id:'sanjar_sh', emoji:'🔮', name:'Санжар Ш', cost:8, desc:'Уникальная карта: бафф/дебафф союзных юнитов (активируется отдельно)'}
+];
+
+/* ---------- templates/stats ---------- */
+function template(id){
+  switch(id){
+    case 'sword': return {emoji:'⚔️', size:15, maxHp:42, damage:7, range:48, speed:160, shoots:false, projectile:false, cost:3, flying:false, onlyTower:false};
+    case 'giant': return {emoji:'🔥', size:28, maxHp:140, damage:26, range:26, speed:70, shoots:false, projectile:false, cost:6, flying:false, onlyTower:true};
+    case 'mage':  return {emoji:'🪄', size:12, maxHp:40, damage:18, range:110, speed:90, shoots:true, projectile:true, cost:4, flying:false, onlyTower:false};
+    case 'skeleton': return {emoji:'💀', size:9, maxHp:28, damage:5, range:38, speed:220, shoots:false, projectile:false, cost:2, flying:false, onlyTower:false};
+    case 'breaker': return {emoji:'🚧', size:10, maxHp:34, damage:0, range:18, speed:200, shoots:false, projectile:false, cost:4, flying:false, onlyTower:true, explodeDamage:30};
+    case 'sanjar': return {emoji:'🛩️', size:14, maxHp:90, damage:14, range:95, speed:120, shoots:false, projectile:false, cost:6, flying:true, onlyTower:true, splashRadius:48};
+    case 'klim': return {emoji:'🏹', size:11, maxHp:38, damage:0.5, range:20, speed:0, shoots:true, projectile:true, cost:5, flying:false, onlyTower:false, klimShot:true, klimTowerDmg:0.5, klimCooldown:100}; // 0.1s cooldown -> 100ms
+    case 'sanjar_sh': return {emoji:'🔮', size:18, maxHp:110, damage:11, range:110, speed:80, shoots:true, projectile:true, cost:8, flying:false, onlyTower:false};
+    default: return {emoji:'?', size:12, maxHp:30, damage:6, range:40, speed:90, shoots:false, projectile:false, cost:3, flying:false};
+  }
+}
+
+/* ---------- UI: build deck grid & guide ---------- */
+function refreshDeckGrid(){
+  deckGrid.innerHTML = '';
+  ALL_CARDS.forEach(card => {
+    const d = document.createElement('div');
+    d.className = 'cardPick' + (selectedDeck.includes(card.id) ? ' selected' : '');
+    d.innerHTML = `<div style="font-size:30px">${card.emoji}</div><div class="lbl">${card.name} (${card.cost})</div>`;
+    d.addEventListener('click', ()=>{
+      if(selectedDeck.includes(card.id)){
+        selectedDeck = selectedDeck.filter(x=>x!==card.id);
+      } else {
+        if(selectedDeck.length < 5) selectedDeck.push(card.id);
+        else { selectedDeck.shift(); selectedDeck.push(card.id); } // rotate
+      }
+      deckCountEl.textContent = selectedDeck.length;
+      refreshDeckGrid();
+    });
+    deckGrid.appendChild(d);
+  });
+  deckCountEl.textContent = selectedDeck.length;
+}
+refreshDeckGrid();
+
+function buildGuide(){
+  guideList.innerHTML = '';
+  ALL_CARDS.forEach(c=>{
+    const el = document.createElement('div');
+    el.style.padding = '6px 8px';
+    el.style.borderBottom = '1px dashed rgba(255,255,255,0.03)';
+    el.innerHTML = `<div style="font-weight:700;cursor:pointer">${c.emoji} ${c.name}</div>
+      <div class="small" style="margin-top:6px; display:none">${c.desc}</div>`;
+    const desc = el.querySelector('.small');
+    el.firstChild.addEventListener('mouseenter', ()=> desc.style.display='block');
+    el.firstChild.addEventListener('mouseleave', ()=> desc.style.display='none');
+    guideList.appendChild(el);
+  });
+}
+buildGuide();
+
+/* ---------- tabs ---------- */
+tabBtns.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    tabBtns.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const t = btn.dataset.tab;
+    tabGame.style.display = t==='game' ? 'block' : 'none';
+    tabDeck.style.display = t==='deck' ? 'block' : 'none';
+    tabGuide.style.display = t==='guide' ? 'block' : 'none';
+    tabChanges.style.display = t==='changes' ? 'block' : 'none';
+  });
+});
+
+/* ---------- Unit & Projectile classes ---------- */
+class Unit {
+  constructor(x,y,team,id){
+    this.x = x; this.y = y; this.team = team; this.id = id;
+    const tpl = template(id);
+    this.emoji = tpl.emoji; this.size = tpl.size; this.maxHp = tpl.maxHp; this.hp = this.maxHp;
+    this.damage = tpl.damage; this.range = tpl.range; this.speed = tpl.speed;
+    this.shoots = !!tpl.shoots; this.projectile = !!tpl.projectile; this.onlyTower = !!tpl.onlyTower;
+    this.flying = !!tpl.flying; this.explodeDamage = tpl.explodeDamage || 0; this.splashRadius = tpl.splashRadius || 0;
+    this.klimShot = !!tpl.klimShot; this.klimTowerDmg = tpl.klimTowerDmg || 0; this.klimCooldown = tpl.klimCooldown || 0;
+    this.lastShot = 0; this.target = null; this.spawn = performance.now();
+    this.sizeScale = 1;
+    this._buffed = false; // tracks if sanjarSh buff applied to avoid repeated multiply stacking
+  }
+  findTarget(){
+    if(this.onlyTower){ this.target = null; return; }
+    let best=null, bd=Infinity;
+    for(const o of units){
+      if(o.team === this.team) continue;
+      if(!this.shoots && o.flying) continue; // melee can't target flying
+      const d = Math.hypot(o.x - this.x, o.y - this.y);
+      if(d < bd){ bd = d; best = o; }
+    }
+    if(best && bd < 150) this.target = best; else this.target = null;
+  }
+  act(dt){
+    const now = performance.now();
+    // Klim: stationary shooter (shoots tower very fast)
+    if(this.klimShot){
+      if(now - this.lastShot >= this.klimCooldown){
+        const goal = this.team === 'player' ? enemy.tower : player.tower;
+        projectiles.push(new Projectile(this.x, this.y, goal, '➡️', this.klimTowerDmg, this.team, true));
+        effects.push({x:goal.x + goal.w/2, y:goal.y + 8, life:14, type:'hit'});
+        this.lastShot = now;
+      }
+      return;
+    }
+
+    // onlyTower units (giant, breaker) go straight to tower
+    if(this.onlyTower){
+      const goal = this.team === 'player' ? enemy.tower : player.tower;
+      const dx = (goal.x + goal.w/2) - this.x, dy = (goal.y + goal.h/2) - this.y;
+      const d = Math.hypot(dx,dy);
+      if(d > this.range){
+        this.x += (dx/d) * this.speed * dt;
+        this.y += (dy/d) * this.speed * dt;
+      } else {
+        if(this.explodeDamage){
+          goal.hp -= this.explodeDamage;
+          effects.push({x:this.x,y:this.y,life:18,type:'splash',r:28});
+          this.hp = 0;
+        } else {
+          goal.hp -= this.damage * dt * 1.6;
+          effects.push({x:goal.x + goal.w/2,y:goal.y + 8,life:12,type:'hit'});
+          cameraShake.intensity = Math.max(cameraShake.intensity, 8);
+        }
+      }
+      return;
+    }
+
+    // sanjar original: flying, only attacks tower (we keep it as non-aggro to units)
+    if(this.id === 'sanjar'){
+      const goal = this.team === 'player' ? enemy.tower : player.tower;
+      const dx = (goal.x + goal.w/2) - this.x, dy = (goal.y + goal.h/2) - this.y;
+      const d = Math.hypot(dx,dy);
+      if(d > this.range){
+        this.x += (dx/d) * this.speed * dt;
+        this.y += (dy/d) * this.speed * dt;
+      } else {
+        if(now - this.lastShot > 400){
+          goal.hp -= this.damage * 0.9;
+          for(const other of units){
+            if(other.team === this.team) continue;
+            const dd = Math.hypot(other.x - this.x, other.y - this.y);
+            if(dd <= this.splashRadius){
+              other.hp -= this.damage * 0.9;
+              effects.push({x:other.x,y:other.y,life:12,type:'hit'});
+            }
+          }
+          effects.push({x:this.x,y:this.y,life:18,type:'splash',r:this.splashRadius});
+          this.lastShot = now;
+        }
+      }
+      return;
+    }
+
+    // normal behavior: target units, else go to tower
+    if(this.target && this.target.hp > 0){
+      if(this.target.flying && !this.shoots){ this.target = null; return; }
+      const dx = this.target.x - this.x, dy = this.target.y - this.y;
+      const d = Math.hypot(dx,dy);
+      if(d > this.range){
+        this.x += (dx/d) * this.speed * dt;
+        this.y += (dy/d) * this.speed * dt;
+      } else {
+        if(this.shoots && this.projectile){
+          if(now - this.lastShot > 300){
+            projectiles.push(new Projectile(this.x, this.y, this.target, '🌀', this.damage, this.team));
+            this.lastShot = now;
+          }
+        } else {
+          this.target.hp -= this.damage * dt * 3.2;
+          effects.push({x:this.target.x,y:this.target.y,life:12,type:'hit'});
+        }
+      }
+      return;
+    }
+
+    // else go to tower
+    const goal = this.team === 'player' ? enemy.tower : player.tower;
+    const dx = (goal.x + goal.w/2) - this.x, dy = (goal.y + goal.h/2) - this.y;
+    const d = Math.hypot(dx,dy);
+    if(d > this.range){
+      this.x += (dx/d) * this.speed * dt;
+      this.y += (dy/d) * this.speed * dt;
+    } else {
+      goal.hp -= this.damage * dt * 0.8;
+      effects.push({x:goal.x + goal.w/2,y:goal.y + 6,life:12,type:'hit'});
+    }
+  }
+  draw(){
+    // shadow
+    ctx.beginPath(); ctx.fillStyle='rgba(0,0,0,0.45)';
+    ctx.ellipse(this.x + cameraShake.x, this.y + this.size*0.45 + cameraShake.y, this.size*1.1*this.sizeScale, this.size*0.5*this.sizeScale, 0,0,Math.PI*2); ctx.fill();
+    // body
+    ctx.beginPath(); ctx.fillStyle = (this.team==='player')? '#007bff' : '#b23a3a';
+    ctx.arc(this.x + cameraShake.x, this.y + cameraShake.y, this.size*this.sizeScale, 0, Math.PI*2); ctx.fill();
+    // emoji
+    ctx.font = Math.max(12,this.size) + "px serif"; ctx.fillStyle='#fff';
+    ctx.fillText(this.emoji, this.x - (this.size/1.7)*this.sizeScale + cameraShake.x, this.y + (this.size/2.6)*this.sizeScale + cameraShake.y);
+    // HP bar
+    const barW = (this.size*2) * this.sizeScale;
+    ctx.fillStyle='rgba(255,255,255,0.08)'; ctx.fillRect(this.x - this.size*this.sizeScale + cameraShake.x, this.y - this.size*this.sizeScale - 10 + cameraShake.y, barW, 6);
+    ctx.fillStyle='#7ef'; ctx.fillRect(this.x - this.size*this.sizeScale + cameraShake.x, this.y - this.size*this.sizeScale - 10 + cameraShake.y, barW * Math.max(0,this.hp)/Math.max(1,this.maxHp), 6);
+    // show selection ring if targeted by sanjarSh selection
+    if(this._selectedForSanjarSh){
+      ctx.beginPath(); ctx.strokeStyle='rgba(80,240,140,0.9)'; ctx.lineWidth = 3;
+      ctx.arc(this.x + cameraShake.x, this.y + cameraShake.y, this.size*this.sizeScale + 6, 0, Math.PI*2); ctx.stroke();
+    }
+    // show sanjar original splash radius
+    if(this.id === 'sanjar'){
+      ctx.beginPath(); ctx.strokeStyle='rgba(120,200,255,0.06)'; ctx.lineWidth=2;
+      ctx.arc(this.x + cameraShake.x, this.y + cameraShake.y, this.splashRadius, 0, Math.PI*2); ctx.stroke();
+    }
+  }
+}
+
+class Projectile {
+  constructor(x,y,target,emoji,damage,team,fast=false){
+    this.x=x; this.y=y; this.target=target; this.emoji=emoji; this.damage=damage; this.team=team;
+    this.speed = fast? 1000 : 480; // px/sec
+    this.life = 2000;
+  }
+  update(dt){
+    if(!this.target || this.target.hp <= 0){ this.life = 0; return; }
+    const dx = this.target.x - this.x, dy = this.target.y - this.y;
+    const d = Math.hypot(dx,dy);
+    if(d < 8){
+      if(this.target.hp !== undefined) this.target.hp -= this.damage;
+      effects.push({x:this.target.x,y:this.target.y,life:14,type:'hit'});
+      this.life = 0;
+      return;
+    }
+    this.x += (dx/d) * this.speed * dt;
+    this.y += (dy/d) * this.speed * dt;
+    this.life -= dt*1000;
+  }
+  draw(){
+    ctx.font='18px Arial'; ctx.fillStyle='white'; ctx.fillText(this.emoji, this.x - 8 + cameraShake.x, this.y + cameraShake.y);
+  }
+}
+
+/* ---------- effects drawing ---------- */
+function drawEffects(){
+  for(let i = effects.length -1; i >= 0; i--){
+    const e = effects[i];
+    if(e.type === 'spawn'){
+      ctx.globalAlpha = Math.max(0, e.life / 10);
+      ctx.font='18px Arial'; ctx.fillStyle = '#9df';
+      ctx.fillText('✨', e.x - 8 + cameraShake.x, e.y - 4 + cameraShake.y);
+      ctx.globalAlpha = 1;
+    } else if(e.type === 'hit'){
+      ctx.font='16px Arial'; ctx.fillStyle='#ffd';
+      ctx.fillText('✦', e.x - 6 + cameraShake.x, e.y - 8 + cameraShake.y);
+    } else if(e.type === 'splash'){
+      const a = Math.max(0, e.life/18);
+      ctx.beginPath(); ctx.fillStyle = `rgba(80,180,255,${a*0.12})`; ctx.arc(e.x + cameraShake.x, e.y + cameraShake.y, e.r, 0, Math.PI*2); ctx.fill();
+    }
+    e.life--;
+    if(e.life <= 0) effects.splice(i,1);
+  }
+}
+
+/* ---------- spawn ---------- */
+function spawnUnitAt(x,y,id,team){
+  const u = new Unit(x,y,team,id);
+  units.push(u);
+  effects.push({x:x,y:y,life:12,type:'spawn'});
+  return u;
+}
+
+/* ---------- input: placing units ---------- */
+canvas.addEventListener('click', (ev)=>{
+  if(!gameRunning) return;
+  // If SanjarSh ability mode active, handle selection differently
+  if(sanjarShMode){
+    const rect = canvas.getBoundingClientRect();
+    const x = (ev.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (ev.clientY - rect.top) * (canvas.height / rect.height);
+    // find closest allied unit to click
+    let found = null;
+    for(const u of units){
+      if(u.team !== 'player') continue;
+      const d = Math.hypot(u.x - x, u.y - y);
+      if(d <= u.size*1.5){
+        found = u; break;
+      }
+    }
+    if(found){
+      // mark selected for SanjarSh and show small menu
+      units.forEach(u=>u._selectedForSanjarSh = false);
+      found._selectedForSanjarSh = true;
+      showSanjarShChoice(found);
+    }
+    return;
+  }
+
+  if(!selectedType) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = (ev.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (ev.clientY - rect.top) * (canvas.height / rect.height);
+  if(x > W/2) return; // left half only
+  const id = emojiToId(selectedType);
+  const tpl = template(id);
+  if(player.elixir < tpl.cost) {
+    flashMsg("Недостаточно эликсира", true);
+    return;
+  }
+  spawnUnitAt(x,y,id,'player');
+  player.elixir -= tpl.cost;
+});
+
+/* ---------- helper emoji->id ---------- */
+function emojiToId(emoji){
+  const found = ALL_CARDS.find(c => c.emoji === emoji || c.id === emoji);
+  return found ? found.id : null;
+}
+
+/* ---------- enemy AI ---------- */
+function enemyThink(now){
+  enemy.elixir = Math.min(enemy.maxElixir, enemy.elixir + 0.02 * (now - lastTime)/16);
+  if(now - enemy.lastPlay < enemy.playInterval) return;
+  enemy.lastPlay = now;
+  const deck = enemyDeck.length ? enemyDeck : ALL_CARDS.map(c=>c.id);
+  const affordable = deck.filter(id => (template(id).cost || 2) <= enemy.elixir);
+  if(affordable.length === 0) return;
+  let pick = affordable[Math.floor(Math.random()*affordable.length)];
+  if(Math.random() < 0.12 && affordable.includes('breaker')) pick = 'breaker';
+  if(Math.random() < 0.08 && affordable.includes('klim')) pick = 'klim';
+  const y = H/2 + (Math.random()-0.5) * 140;
+  spawnUnitAt(W - 80, y, pick, 'enemy');
+  enemy.elixir -= (template(pick).cost || 2);
+}
+
+/* ---------- world update ---------- */
+function updateWorld(dt){
+  const now = performance.now();
+
+  // projectiles
+  for(let i = projectiles.length-1; i>=0; i--){
+    const p = projectiles[i];
+    p.update(dt);
+    if(p.life <= 0) projectiles.splice(i,1);
+  }
+
+  // units
+  for(let i = units.length-1; i>=0; i--){
+    const u = units[i];
+    if(u.hp <= 0){
+      effects.push({x:u.x,y:u.y,life:12,type:'spawn'});
+      units.splice(i,1);
+      continue;
+    }
+    u.findTarget();
+    u.act(dt);
+  }
+
+  // camera shake decay
+  if(cameraShake.intensity > 0){
+    cameraShake.x = (Math.random()-0.5) * cameraShake.intensity;
+    cameraShake.y = (Math.random()-0.5) * cameraShake.intensity;
+    cameraShake.intensity *= 0.82;
+    if(cameraShake.intensity < 0.5){ cameraShake.intensity = 0; cameraShake.x = 0; cameraShake.y = 0; }
+  }
+}
+
+/* ---------- render ---------- */
+function render(){
+  ctx.clearRect(0,0,W,H);
+  // midline
+  ctx.strokeStyle='rgba(255,255,255,0.02)';
+  ctx.beginPath(); ctx.moveTo(W/2 + cameraShake.x,20 + cameraShake.y); ctx.lineTo(W/2 + cameraShake.x,H-20 + cameraShake.y); ctx.stroke();
+
+  // towers
+  drawTower(player.tower,'blue');
+  drawTower(enemy.tower,'red');
+
+  // units
+  for(const u of units) u.draw();
+
+  // projectiles
+  for(const p of projectiles) p.draw();
+
+  // effects
+  drawEffects();
+}
+
+/* ---------- draw towers ---------- */
+function drawTower(t, color){
+  ctx.fillStyle = color; ctx.fillRect(t.x + cameraShake.x, t.y + cameraShake.y, t.w, t.h);
+  ctx.fillStyle='rgba(255,255,255,0.06)'; ctx.fillRect(t.x - 6 + cameraShake.x, t.y - 18 + cameraShake.y, t.w + 12, 10);
+  const ratio = Math.max(0, t.hp) / Math.max(1, t.maxHp);
+  ctx.fillStyle = (color==='blue'?'#66ffb0':'#ff9fbf'); ctx.fillRect(t.x - 6 + cameraShake.x, t.y - 18 + cameraShake.y, (t.w + 12) * ratio, 10);
+  ctx.font='12px Arial'; ctx.fillStyle='#ddd'; ctx.fillText(Math.max(0,Math.round(t.hp)), t.x + t.w/2 - 8 + cameraShake.x, t.y - 24 + cameraShake.y);
+}
+
+/* ---------- main loop ---------- */
+function gameLoop(ts){
+  if(!gameRunning) return;
+  const dt = Math.min(0.05, (ts - lastTime)/1000);
+  // regen elixir (approx 1 per sec scaled)
+  player.elixir = Math.min(player.maxElixir, player.elixir + 1.0 * dt);
+  enemy.elixir = Math.min(enemy.maxElixir, enemy.elixir + 0.9 * dt);
+
+  // cooldowns
+  if(sanjarShCooldown > 0) sanjarShCooldown = Math.max(0, sanjarShCooldown - (ts - lastTime));
+
+  elixirUI.textContent = `Эликсир: ${player.elixir.toFixed(1)} / ${player.maxElixir}`;
+  playerHpEl.textContent = Math.max(0, Math.round(player.tower.hp));
+  enemyHpEl.textContent = Math.max(0, Math.round(enemy.tower.hp));
+
+  // update timer display
+  const elapsed = ts - matchStartTime;
+  const remain = Math.max(0, matchDuration - elapsed);
+  const mm = String(Math.floor(remain/60000)).padStart(2,'0');
+  const ss = String(Math.floor(remain%60000/1000)).padStart(2,'0');
+  hudTimer.textContent = `${mm}:${ss}`;
+
+  // when time runs out -> resolve
+  if(remain <= 0){
+    finishMatchByTimeout();
+    return;
+  }
+
+  // enemy think occasionally
+  enemyThink(ts);
+
+  // update world & render
+  updateWorld(dt);
+  render();
+
+  // check end
+  if(enemy.tower.hp <= 0 || player.tower.hp <= 0){
+    finishMatch(enemy.tower.hp <= 0 ? 'win' : 'lose');
+    return;
+  }
+
+  lastTime = ts;
+  requestAnimationFrame(gameLoop);
+}
+
+/* ---------- finishing match ---------- */
+function finishMatch(result){
+  gameRunning = false;
+  let text = result === 'win' ? 'Ты выиграл!' : 'Ты проиграл!';
+  ctx.fillStyle = 'white'; ctx.font = '48px Arial';
+  ctx.fillText(text, W/2 - 150 + cameraShake.x, H/2 + cameraShake.y);
+  restartBtn.style.display = 'block';
+}
+
+function finishMatchByTimeout(){
+  // tie or decide by coin flip
+  if(player.tower.hp === enemy.tower.hp){
+    // coin flip
+    const coin = Math.random() < 0.5 ? 'win' : 'lose';
+    finishMatch(coin);
+  } else {
+    // whoever has more hp wins
+    finishMatch(player.tower.hp > enemy.tower.hp ? 'win' : 'lose');
+  }
+}
+
+/* ---------- play button ---------- */
+function flashMsg(text, danger=false){
+  msgBox.style.display = 'block';
+  msgBox.textContent = text;
+  msgBox.style.background = danger ? 'rgba(200,40,40,0.9)' : 'rgba(0,0,0,0.6)';
+  setTimeout(()=>{ msgBox.style.display = 'none'; }, 1700);
+}
+
+playBtn.addEventListener('click', ()=>{
+  if(selectedDeck.length === 0){
+    // block start and show error
+    flashMsg("Выберите колоду (необходимо 1–5 карт)", true);
+    return;
+  }
+  // finalize player deck
+  player.deck = selectedDeck.slice(0,5).map(id => ALL_CARDS.find(c=>c.id===id));
+  // enemy deck random
+  enemyDeck = [];
+  const pool = ALL_CARDS.map(c=>c.id);
+  while(enemyDeck.length < 5){
+    const p = pool[Math.floor(Math.random()*pool.length)];
+    if(!enemyDeck.includes(p)) enemyDeck.push(p);
+  }
+  // hide menu and start
+  menuWrap.style.display = 'none';
+  loadingScreen.style.display = 'flex';
+  const t0 = performance.now();
+  function loadAnim(now){
+    const elapsed = now - t0;
+    const step = Math.floor((elapsed/300)%4);
+    loadingDots.textContent = ['.','..','...',''][step] || '...';
+    if(elapsed >= 700){
+      loadingScreen.style.display = 'none';
+      startGame();
+      return;
+    }
+    requestAnimationFrame(loadAnim);
+  }
+  requestAnimationFrame(loadAnim);
+});
+
+/* quick play (fills default deck if none chosen) */
+quickPlay.addEventListener('click', ()=>{
+  if(selectedDeck.length === 0) selectedDeck = ALL_CARDS.slice(0,5).map(c=>c.id);
+  playBtn.click();
+});
+
+/* open guide button also focuses guide tab */
+openGuide.addEventListener('click', ()=>{
+  document.querySelector('[data-tab="guide"]').click();
+});
+
+/* ---------- startGame ---------- */
+function buildBottomUI(){
+  // clear existing
+  document.querySelectorAll('.unitBtn').forEach(n=>n.remove());
+  // create buttons for selected deck in player.deck
+  const active = player.deck.length ? player.deck : [];
+  active.forEach((card, idx)=>{
+    const btn = document.createElement('button');
+    btn.className = 'unitBtn';
+    btn.dataset.id = card.id;
+    btn.dataset.type = card.emoji;
+    btn.dataset.cost = card.cost;
+    btn.innerHTML = `<span class="cost">${card.cost}⚡</span>${card.emoji}`;
+    btn.addEventListener('click', ()=>{
+      if(btn.classList.contains('disabled')) return;
+      document.querySelectorAll('.unitBtn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedType = btn.dataset.type;
+      selectedCost = parseInt(btn.dataset.cost,10);
+    });
+    ui.insertBefore(btn, abilityPanel);
+  });
+  // add ability panel controls if sanjar_sh in deck
+  abilityPanel.innerHTML = '';
+  const hasSanjarSh = player.deck.some(d=>d.id === 'sanjar_sh');
+  if(hasSanjarSh){
+    const abilityBtn = document.createElement('button');
+    abilityBtn.className = 'abilityBtn';
+    abilityBtn.id = 'sanjarShBtn';
+    abilityBtn.textContent = 'СанжарШ';
+    abilityBtn.title = 'Активировать способность СанжарШ';
+    abilityBtn.addEventListener('click', ()=>{
+      if(sanjarShCooldown > 0){
+        flashMsg('Способность на перезарядке', true);
+        return;
+      }
+      sanjarShMode = !sanjarShMode;
+      abilityBtn.classList.toggle('active', sanjarShMode);
+      if(sanjarShMode){
+        flashMsg('Выберите союзного юнита для применения способности');
+      } else {
+        // cancel selection
+        units.forEach(u=>u._selectedForSanjarSh = false);
+      }
+    });
+    const cdLabel = document.createElement('div');
+    cdLabel.id = 'sanjarShCooldown';
+    cdLabel.textContent = 'Готов';
+    abilityPanel.appendChild(abilityBtn);
+    abilityPanel.appendChild(cdLabel);
+  }
+}
+
+function startGame(){
+  // reset
+  units = []; projectiles = []; effects = [];
+  player.tower.hp = player.tower.maxHp = 320;
+  enemy.tower.hp = enemy.tower.maxHp = 320;
+  player.elixir = player.maxElixir = 10; // start full for quick testing
+  enemy.elixir = enemy.maxElixir = 9;
+  lastTime = performance.now();
+  matchStartTime = performance.now();
+  enemy.lastPlay = performance.now();
+  gameRunning = true;
+  restartBtn.style.display = 'none';
+  // build UI bottom
+  buildBottomUI();
+  // set cooldowns
+  sanjarShCooldown = 0;
+  sanjarShMode = false;
+  // start loop
+  requestAnimationFrame(gameLoop);
+}
+
+/* ---------- SanjarSh ability UI & logic ---------- */
+function showSanjarShChoice(unit){
+  // small floating menu near unit
+  const menu = document.createElement('div');
+  menu.style.position = 'fixed';
+  menu.style.zIndex = '999';
+  menu.style.background = 'linear-gradient(180deg,#0b0b0b,#121212)';
+  menu.style.border = '1px solid rgba(255,255,255,0.06)';
+  menu.style.padding = '6px';
+  menu.style.borderRadius = '8px';
+  menu.style.display = 'flex';
+  menu.style.gap = '6px';
+  menu.style.boxShadow = '0 12px 30px rgba(0,0,0,0.5)';
+  menu.innerHTML = `<button id="shInc" style="padding:6px;border-radius:6px;background:#2ece8a;border:none">Увеличить</button>
+                    <button id="shDec" style="padding:6px;border-radius:6px;background:#ff7b7b;border:none">Уменьшить</button>
+                    <button id="shCancel" style="padding:6px;border-radius:6px;background:#666;border:none">Отмена</button>`;
+  document.body.appendChild(menu);
+
+  // position near unit
+  const r = canvas.getBoundingClientRect();
+  menu.style.left = (r.left + unit.x + 20) + 'px';
+  menu.style.top = (r.top + unit.y - 10) + 'px';
+
+  document.getElementById('shCancel').addEventListener('click', ()=>{
+    units.forEach(u=>u._selectedForSanjarSh = false);
+    sanjarShMode = false;
+    const btn = document.getElementById('sanjarShBtn'); if(btn) btn.classList.remove('active');
+    menu.remove();
+  });
+
+  // apply increase
+  document.getElementById('shInc').addEventListener('click', ()=>{
+    applySanjarSh(unit, 'inc');
+    menu.remove();
+  });
+  document.getElementById('shDec').addEventListener('click', ()=>{
+    applySanjarSh(unit, 'dec');
+    menu.remove();
+  });
+}
+
+function applySanjarSh(unit, mode){
+  if(sanjarShCooldown > 0){
+    flashMsg('Способность на перезарядке', true);
+    return;
+  }
+  // only own units allowed
+  if(unit.team !== 'player') return;
+  // apply changes: if inc -> hp +45%, speed *0.5 (slower) , size up slightly; if dec -> hp -30%, speed *1.3, size down
+  if(mode === 'inc'){
+    unit.maxHp *= 1.45;
+    unit.hp *= 1.45;
+    unit.speed *= 0.5;
+    unit.sizeScale *= 1.12;
+  } else {
+    unit.maxHp *= 0.7;
+    unit.hp *= 0.7;
+    unit.speed *= 1.3;
+    unit.sizeScale *= 0.85;
+  }
+  unit._selectedForSanjarSh = false;
+  // mark cooldown
+  sanjarShCooldown = sanjarShCooldownMs;
+  sanjarShMode = false;
+  const btn = document.getElementById('sanjarShBtn'); if(btn) btn.classList.remove('active');
+  flashMsg(mode === 'inc' ? 'Юнит увеличен' : 'Юнит уменьшен');
+}
+
+/* ---------- UI refresh & utility ---------- */
+function refreshAbilityCooldownLabel(){
+  const lbl = document.getElementById('sanjarShCooldown');
+  if(!lbl) return;
+  if(sanjarShCooldown <= 0) lbl.textContent = 'Готов';
+  else lbl.textContent = `Перк: ${(sanjarShCooldown/1000).toFixed(1)}с`;
+}
+
+/* ---------- fallback enemy spawner ---------- */
+setInterval(()=>{
+  if(gameRunning && enemy.elixir >= 2 && Math.random() < 0.10){
+    const pool = enemyDeck.length ? enemyDeck : ALL_CARDS.map(c=>c.id);
+    const pick = pool[Math.floor(Math.random()*pool.length)];
+    const y = H/2 + (Math.random()-0.5)*160;
+    spawnUnitAt(W - 80, y, pick, 'enemy');
+    enemy.elixir -= (template(pick).cost || 2);
+  }
+}, 1200);
+
+/* ---------- init: animate loading -> show menu ---------- */
+let initialStart = performance.now();
+function initialAnim(ts){
+  const elapsed = ts - initialStart;
+  const step = Math.floor((elapsed/350)%4);
+  loadingDots.textContent = '.'.repeat(step+1);
+  if(elapsed >= 900){
+    loadingScreen.style.display = 'none';
+    menuWrap.style.display = 'flex';
+    return;
+  }
+  requestAnimationFrame(initialAnim);
+}
+requestAnimationFrame(initialAnim);
+
+/* ---------- helper: ensure deck UI updated when closing menu and starting ---------- */
+function refreshDeckSelectionVisual(){
+  // called when menu shown; the grid already managed
+  refreshDeckGrid();
+}
+
+/* ---------- map keyboard shortcuts 1..5 to deck buttons ---------- */
+window.addEventListener('keydown', (e)=>{
+  const idx = parseInt(e.key) - 1;
+  if(!isNaN(idx) && idx >= 0){
+    const btns = Array.from(document.querySelectorAll('.unitBtn'));
+    if(btns[idx]) btns[idx].click();
+  }
+});
+
+/* ---------- repeated updates ---------- */
+setInterval(()=>{
+  if(gameRunning) refreshAbilityCooldownLabel();
+}, 120);
+
+/* ---------- helper: show messages on missing deck when trying to place card via UI (guard) ---------- */
+function guardDeckSelected(){
+  if(selectedDeck.length === 0){
+    flashMsg('Выберите колоду в меню перед стартом!', true);
+    return false;
+  }
+  return true;
+}
+
+/* ---------- On menu open, keep deck UI in sync ---------- */
+document.addEventListener('visibilitychange', ()=>{ /* noop */ });
+
+/* ---------- restart button ---------- */
+restartBtn.addEventListener('click', ()=>{
+  restartBtn.style.display = 'none';
+  menuWrap.style.display = 'flex';
+  // reset deck UI highlight etc.
+  selectedType = null; selectedCost = 0;
+});
+
+/* ---------- build initial guide / changes done above already ---------- */
+
+/* ---------- final polish: enable card usage only from deck in game ---------- */
+function refreshUIButtonsForDeck(){
+  const active = player.deck && player.deck.length ? player.deck.map(x=>x.id) : ALL_CARDS.map(c=>c.id);
+  document.querySelectorAll('.unitBtn').forEach(btn=>{
+    const id = btn.dataset.id;
+    if(active.includes(id)) btn.classList.remove('disabled'); else btn.classList.add('disabled');
+  });
+}
+
+/* ---------- small window resize handling ---------- */
+window.addEventListener('resize', ()=>{
+  // not necessary for core gameplay, but keep canvas size constant
+});
+
+/* ---------- Utility: expose startGame for quick manual testing in console if needed ---------- */
+window.__mr = { startGame, spawnUnitAt, ALL_CARDS };
+
+/* ========= End of script ========= */
+</script>
+</body>
+</html>
